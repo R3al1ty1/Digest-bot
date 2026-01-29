@@ -1,0 +1,26 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install build dependencies for tgcrypto
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libc-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
+
+# Copy dependency files
+COPY pyproject.toml uv.lock* ./
+
+# Install dependencies
+RUN uv sync --no-dev
+
+# Copy application code
+COPY lib ./lib
+COPY migrations ./migrations
+
+# Pyrogram session will be mounted as volume
+# Run worker (default command, can be overridden for beat)
+CMD ["uv", "run", "celery", "-A", "lib.worker.celery_app", "worker", "--loglevel=info"]

@@ -1,0 +1,104 @@
+services:
+  # ===========================================
+  # PostgreSQL Database
+  # ===========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: digest_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-digest_bot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-digest_bot}
+      POSTGRES_DB: ${POSTGRES_DB:-digest_bot}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-digest_bot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # Redis (Celery Broker)
+  # ===========================================
+  redis:
+    image: redis:7-alpine
+    container_name: digest_redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===========================================
+  # Telegram Bot (aiogram)
+  # ===========================================
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    container_name: digest_bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-digest_bot}:${POSTGRES_PASSWORD:-digest_bot}@postgres:5432/${POSTGRES_DB:-digest_bot}
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./digest_bot.session:/app/digest_bot.session
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ===========================================
+  # Celery Worker
+  # ===========================================
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: digest_worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-digest_bot}:${POSTGRES_PASSWORD:-digest_bot}@postgres:5432/${POSTGRES_DB:-digest_bot}
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./digest_bot.session:/app/digest_bot.session
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ===========================================
+  # Celery Beat (Scheduler)
+  # ===========================================
+  beat:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: digest_beat
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-digest_bot}:${POSTGRES_PASSWORD:-digest_bot}@postgres:5432/${POSTGRES_DB:-digest_bot}
+      REDIS_URL: redis://redis:6379/0
+    command: ["uv", "run", "celery", "-A", "lib.worker.celery_app", "beat", "--loglevel=info"]
+    depends_on:
+      - worker
+
+volumes:
+  postgres_data:
+  redis_data:

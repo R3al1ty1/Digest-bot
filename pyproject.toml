@@ -1,0 +1,40 @@
+[project]
+name = "news-digest-bot"
+version = "0.1.0"
+description = "Telegram bot for automatic news digest from channels"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    # Telegram Bot
+    "aiogram>=3.13.1",
+    # Telegram Scraper (userbot)
+    "pyrogram>=2.0.106",
+    "tgcrypto>=1.2.5",
+    # Task Queue
+    "celery>=5.4.0",
+    "redis>=5.2.0",
+    # Database
+    "sqlalchemy>=2.0.36",
+    "asyncpg>=0.30.0",
+    "psycopg2-binary>=2.9.10",
+    # AI Client (OpenRouter - OpenAI compatible)
+    "openai>=1.57.0",
+    "httpx>=0.28.1",
+    # Config
+    "pydantic>=2.10.3",
+    "pydantic-settings>=2.6.1",
+    "python-dotenv>=1.0.1",
+    "aiohttp>=3.13.3",
+    "magic-filter>=1.0.12",
+    "frozenlist>=1.8.0",
+    "pydantic-core>=2.41.5",
+    "amqp>=5.3.1",
+    "tqdm>=4.67.1",
+    "httpcore>=1.0.9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+]
