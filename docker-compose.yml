@@ -3,7 +3,7 @@ services:
   # PostgreSQL Database
   # ===========================================
   postgres:
-    image: postgres:16-alpine
+    image: postgres:latest
     container_name: digest_postgres
     restart: unless-stopped
     environment:
@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-digest_bot}
       POSTGRES_DB: ${POSTGRES_DB:-digest_bot}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     ports:
       - "5432:5432"
     healthcheck:
