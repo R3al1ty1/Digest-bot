@@ -101,6 +101,7 @@ async def _generate_digest_for_user(user_id: int, channel: str) -> None:
         try:
             # Fetch posts from channel
             posts = await fetch_channel_posts(channel, hours=24)
+
             logger.info(f"Fetched {len(posts)} posts from {channel}")
 
             # Generate digest via AI

@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
-from lib.bot.handlers import channel, digest, settings, start
+from lib.bot.handlers import channel, digest, settings, start, help_cmd
 from lib.core.config import settings as app_settings
 
 
@@ -29,6 +29,7 @@ async def main() -> None:
     dp.include_router(channel.router)
     dp.include_router(digest.router)
     dp.include_router(settings.router)
+    dp.include_router(help_cmd.router)
 
     logger.info("Starting bot...")
 
