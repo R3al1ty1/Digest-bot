@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 import html
 import logging
 import re
@@ -160,15 +161,23 @@ def generate_digest_task(user_id: int, channel: str) -> dict:
 @app.task(name="lib.worker.tasks.scheduled_digest_task")
 def scheduled_digest_task() -> dict:
     """
-    Celery task: Generate digests for all active users.
-    Called by Celery Beat on schedule.
+    Celery task: Generate digests for users scheduled at current hour.
+    Called by Celery Beat every hour.
     """
-    async def _run_for_all_users():
+    async def _run_for_scheduled_users():
+        # Get current UTC time
+        now = datetime.now(datetime.timezone.utc)
+        current_hour = now.hour
+        current_minute = 0  # We run at the start of each hour
+
         async with async_session_maker() as session:
             user_repo = UserRepository(session)
-            users = await user_repo.get_all_active()
+            # Get only users scheduled for this specific time
+            users = await user_repo.get_by_schedule_time(current_hour, current_minute)
 
-            logger.info(f"Running scheduled digest for {len(users)} users")
+            logger.info(
+                f"Running scheduled digest for {len(users)} users at {current_hour:02d}:{current_minute:02d} UTC"
+            )
 
             for user in users:
                 if user.target_channel:
@@ -183,5 +192,5 @@ def scheduled_digest_task() -> dict:
             return len(users)
 
     loop = asyncio.get_event_loop()
-    count = loop.run_until_complete(_run_for_all_users())
+    count = loop.run_until_complete(_run_for_scheduled_users())
     return {"processed_users": count, "status": "completed"}
