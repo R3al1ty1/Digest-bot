@@ -152,7 +152,8 @@ def generate_digest_task(user_id: int, channel: str) -> dict:
     Celery task: Generate digest for a specific user.
     Called manually via /digest command.
     """
-    asyncio.run(_generate_digest_for_user(user_id, channel))
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(_generate_digest_for_user(user_id, channel))
     return {"user_id": user_id, "channel": channel, "status": "completed"}
 
 
@@ -181,5 +182,6 @@ def scheduled_digest_task() -> dict:
 
             return len(users)
 
-    count = asyncio.run(_run_for_all_users())
+    loop = asyncio.get_event_loop()
+    count = loop.run_until_complete(_run_for_all_users())
     return {"processed_users": count, "status": "completed"}
