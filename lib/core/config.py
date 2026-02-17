@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # OpenRouter
     openrouter_api_key: str
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    openrouter_model: str = "tngtech/deepseek-r1t2-chimera:free"
+    openrouter_model: str = "qwen/qwen3-next-80b-a3b-instruct:free"
 
     # Database
     database_url: str
