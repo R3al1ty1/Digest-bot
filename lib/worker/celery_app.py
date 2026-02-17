@@ -18,8 +18,8 @@ app.conf.update(
     task_serializer="json",
     accept_content=["json"],
     result_serializer="json",
-    timezone="UTC",
-    enable_utc=True,
+    timezone="Europe/Moscow",  # GMT+3
+    enable_utc=False,
     task_track_started=True,
     task_time_limit=300,
     worker_prefetch_multiplier=1,

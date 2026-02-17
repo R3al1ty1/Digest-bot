@@ -3,6 +3,7 @@ from datetime import datetime
 import html
 import logging
 import re
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -165,10 +166,9 @@ def scheduled_digest_task() -> dict:
     Called by Celery Beat every hour.
     """
     async def _run_for_scheduled_users():
-        # Get current UTC time
-        now = datetime.now(datetime.timezone.utc)
+        now = datetime.now(ZoneInfo("Europe/Moscow"))
         current_hour = now.hour
-        current_minute = 0  # We run at the start of each hour
+        current_minute = 0
 
         async with async_session_maker() as session:
             user_repo = UserRepository(session)
@@ -176,7 +176,7 @@ def scheduled_digest_task() -> dict:
             users = await user_repo.get_by_schedule_time(current_hour, current_minute)
 
             logger.info(
-                f"Running scheduled digest for {len(users)} users at {current_hour:02d}:{current_minute:02d} UTC"
+                f"Running scheduled digest for {len(users)} users at {current_hour:02d}:{current_minute:02d} GMT+3"
             )
 
             for user in users:

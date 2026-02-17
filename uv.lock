@@ -930,6 +930,7 @@ dependencies = [
     { name = "sqlalchemy" },
     { name = "tgcrypto" },
     { name = "tqdm" },
+    { name = "tzdata" },
 ]
 
 [package.dev-dependencies]
@@ -961,6 +962,7 @@ requires-dist = [
     { name = "sqlalchemy", specifier = ">=2.0.36" },
     { name = "tgcrypto", specifier = ">=1.2.5" },
     { name = "tqdm", specifier = ">=4.67.1" },
+    { name = "tzdata", specifier = ">=2025.3" },
 ]
 
 [package.metadata.requires-dev]

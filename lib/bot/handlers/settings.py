@@ -24,7 +24,7 @@ def _format_settings(user) -> str:
     return (
         "<b>Текущие настройки:</b>\n\n"
         f"<b>Канал:</b> {channel}\n"
-        f"<b>Время рассылки:</b> {schedule} UTC\n"
+        f"<b>Время рассылки:</b> {schedule} GMT+3 (Москва)\n"
         f"<b>Автоматическая рассылка:</b> {status}"
     )
 
@@ -102,7 +102,7 @@ async def set_time(callback: CallbackQuery) -> None:
             reply_markup=get_settings_keyboard(user.is_active),
         )
 
-    await callback.answer(f"Время установлено: {hour:02d}:00 UTC")
+    await callback.answer(f"Время установлено: {hour:02d}:00 GMT+3 (Москва)")
 
 
 @router.callback_query(F.data == "back_to_settings")
