@@ -2,8 +2,8 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from lib.db.database import async_session_maker
-from lib.db.repositories import UserRepository
+from lib.core.database import async_session_maker
+from lib.db.repositories.user import UserRepository
 from lib.worker.tasks import generate_digest_task
 
 

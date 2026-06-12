@@ -4,9 +4,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message
 
-from lib.db.database import async_session_maker
-from lib.db.repositories import UserRepository
-from lib.worker.scraper import test_channel_access
+from lib.core.database import async_session_maker
+from lib.db.repositories.user import UserRepository
+from lib.services.scraper.scraper import test_channel_access
 
 
 router = Router()

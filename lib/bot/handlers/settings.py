@@ -5,8 +5,8 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
 from lib.bot.keyboards import get_settings_keyboard, get_time_keyboard
-from lib.db.database import async_session_maker
-from lib.db.repositories import UserRepository
+from lib.core.database import async_session_maker
+from lib.db.repositories.user import UserRepository
 
 
 router = Router()

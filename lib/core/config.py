@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # OpenRouter
     openrouter_api_key: str
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    openrouter_model: str = "qwen/qwen3-next-80b-a3b-instruct:free"
+    openrouter_model: str = "openai/gpt-5.4-mini"
 
     # Database
     database_url: str

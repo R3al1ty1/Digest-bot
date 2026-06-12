@@ -1,19 +1,19 @@
 import asyncio
-from datetime import datetime
 import html
 import logging
 import re
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import httpx
 
 from lib.core.config import settings
-from lib.db.database import async_session_maker
-from lib.db.repositories import DigestLogRepository, UserRepository
-from lib.worker.ai_client import generate_digest
+from lib.core.database import async_session_maker
+from lib.db.repositories.digest import DigestLogRepository
+from lib.db.repositories.user import UserRepository
+from lib.services.reducer.ai_client import generate_digest
+from lib.services.scraper.scraper import fetch_channel_posts
 from lib.worker.celery_app import app
-from lib.worker.scraper import fetch_channel_posts
-
 
 logger = logging.getLogger(__name__)
 

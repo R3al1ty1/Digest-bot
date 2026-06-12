@@ -6,13 +6,13 @@ from openai import AsyncOpenAI, APIError, APITimeoutError, RateLimitError
 
 from lib.core.config import settings
 from lib.core.constants import SYSTEM_PROMPT
-from lib.worker.scraper import Post
+from lib.services.scraper.scraper import Post
 
 
 logger = logging.getLogger(__name__)
 
 MAX_RETRIES = 3
-RETRY_DELAY = 2  # seconds
+RETRY_DELAY = 10  # seconds - бесплатные модели имеют лимит ~8 req/min
 
 
 def get_openrouter_client() -> AsyncOpenAI:
