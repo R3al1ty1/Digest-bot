@@ -1,3 +1,12 @@
+from enum import Enum
+
+
+class AppEnvironment(str, Enum):
+    LOCAL = "local"
+    STAGING = "staging"
+    PRODUCTION = "production"
+
+
 class ModelInteraction:
     SYSTEM_PROMPT = """
     # ROLE

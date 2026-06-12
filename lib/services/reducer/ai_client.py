@@ -5,7 +5,7 @@ import logging
 from openai import AsyncOpenAI, APIError, APITimeoutError, RateLimitError
 
 from lib.core.config import settings
-from lib.core.constants import SYSTEM_PROMPT
+from lib.core.constants import ModelInteraction
 from lib.services.scraper.scraper import Post
 
 
@@ -62,7 +62,7 @@ async def generate_digest(posts: list[Post]) -> tuple[str, int]:
             response = await client.chat.completions.create(
                 model=settings.openrouter_model,
                 messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": ModelInteraction.SYSTEM_PROMPT},
                     {"role": "user", "content": user_message},
                 ],
                 max_tokens=2000,

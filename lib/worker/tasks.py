@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo
 import httpx
 
 from lib.core.config import settings
-from lib.core.database import async_session_maker
+from lib.core.container import container
 from lib.db.repositories.digest import DigestLogRepository
 from lib.db.repositories.user import UserRepository
 from lib.services.reducer.ai_client import generate_digest
@@ -97,7 +97,7 @@ async def _generate_digest_for_user(user_id: int, channel: str) -> None:
     """Generate and send digest for a single user."""
     logger.info(f"Generating digest for user {user_id}, channel: {channel}")
 
-    async with async_session_maker() as session:
+    async with container.db.session() as session:
         log_repo = DigestLogRepository(session)
 
         try:
@@ -170,7 +170,7 @@ def scheduled_digest_task() -> dict:
         current_hour = now.hour
         current_minute = 0
 
-        async with async_session_maker() as session:
+        async with container.db.session() as session:
             user_repo = UserRepository(session)
             # Get only users scheduled for this specific time
             users = await user_repo.get_by_schedule_time(current_hour, current_minute)

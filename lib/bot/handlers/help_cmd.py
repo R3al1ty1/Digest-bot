@@ -2,7 +2,7 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from lib.core.database import async_session_maker
+from lib.core.container import container
 from lib.db.repositories.user import UserRepository
 
 
@@ -14,7 +14,7 @@ async def cmd_help(message: Message) -> None:
     if not message.from_user:
         return
 
-    async with async_session_maker() as session:
+    async with container.db.session() as session:
         repo = UserRepository(session)
         user = await repo.get_by_id(message.from_user.id)
 

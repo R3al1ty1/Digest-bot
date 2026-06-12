@@ -6,6 +6,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from lib.bot.handlers import channel, digest, settings, start, help_cmd
+from lib.core.container import container
 from lib.core.config import settings as app_settings
 
 
@@ -33,7 +34,10 @@ async def main() -> None:
 
     logger.info("Starting bot...")
 
-    await dp.start_polling(bot)
+    try:
+        await dp.start_polling(bot)
+    finally:
+        await container.close()
 
 
 if __name__ == "__main__":

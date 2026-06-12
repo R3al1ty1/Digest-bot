@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import Message
 
-from lib.core.database import async_session_maker
+from lib.core.container import container
 from lib.db.repositories.user import UserRepository
 from lib.services.scraper.scraper import test_channel_access
 
@@ -66,7 +66,7 @@ async def _process_channel(message: Message, state: FSMContext, channel: str) ->
         return
 
     # Save to database
-    async with async_session_maker() as session:
+    async with container.db.session() as session:
         repo = UserRepository(session)
         await repo.update_channel(message.from_user.id, channel)
 

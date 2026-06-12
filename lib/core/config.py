@@ -1,5 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from lib.core.constants import AppEnvironment
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -7,6 +9,8 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    environment: AppEnvironment = AppEnvironment.LOCAL
 
     # Telegram Bot
     bot_token: str

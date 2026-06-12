@@ -5,7 +5,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
 from lib.bot.keyboards import get_settings_keyboard, get_time_keyboard
-from lib.core.database import async_session_maker
+from lib.core.container import container
 from lib.db.repositories.user import UserRepository
 
 
@@ -34,7 +34,7 @@ async def cmd_settings(message: Message) -> None:
     if not message.from_user:
         return
 
-    async with async_session_maker() as session:
+    async with container.db.session() as session:
         repo = UserRepository(session)
         user = await repo.get_by_id(message.from_user.id)
 
@@ -53,7 +53,7 @@ async def toggle_active(callback: CallbackQuery) -> None:
     if not callback.from_user or not callback.message:
         return
 
-    async with async_session_maker() as session:
+    async with container.db.session() as session:
         repo = UserRepository(session)
         user = await repo.get_by_id(callback.from_user.id)
 
@@ -91,7 +91,7 @@ async def set_time(callback: CallbackQuery) -> None:
     time_str = callback.data.split(":")[1]
     hour = int(time_str)
 
-    async with async_session_maker() as session:
+    async with container.db.session() as session:
         repo = UserRepository(session)
         await repo.update_schedule(callback.from_user.id, hour, 0)
         user = await repo.get_by_id(callback.from_user.id)
@@ -110,7 +110,7 @@ async def back_to_settings(callback: CallbackQuery) -> None:
     if not callback.from_user or not callback.message:
         return
 
-    async with async_session_maker() as session:
+    async with container.db.session() as session:
         repo = UserRepository(session)
         user = await repo.get_by_id(callback.from_user.id)
 
