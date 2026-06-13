@@ -3,7 +3,6 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from lib.core.container import container
-from lib.db.repositories.user import UserRepository
 from lib.worker.tasks import generate_digest_task
 
 
@@ -15,9 +14,10 @@ async def cmd_digest(message: Message) -> None:
     if not message.from_user:
         return
 
-    async with container.db.session() as session:
-        repo = UserRepository(session)
-        user = await repo.get_by_id(message.from_user.id)
+    async with container.uow() as uow:
+        user = await uow.users.get_by_id(message.from_user.id)
+        channels = await uow.user_channels.list_active_by_user(message.from_user.id)
+        interests = await uow.digest_interests.list_by_user(message.from_user.id)
 
     if not user:
         await message.answer(
@@ -25,19 +25,25 @@ async def cmd_digest(message: Message) -> None:
         )
         return
 
-    if not user.target_channel:
+    if not channels:
         await message.answer(
-            "Сначала укажи канал для дайджеста командой /set_channel"
+            "Сначала укажи каналы для дайджеста командой /set_channels"
+        )
+        return
+
+    if not interests:
+        await message.answer(
+            "Сначала укажи интересы для дайджеста командой /set_interests"
         )
         return
 
     await message.answer(
-        f"Генерирую дайджест из канала <code>@{user.target_channel}</code>...\n\n"
+        f"Генерирую дайджест из {len(channels)} каналов по {len(interests)} интересам...\n\n"
         "Это может занять некоторое время."
     )
 
-    # Send task to Celery
     generate_digest_task.delay(
         user_id=message.from_user.id,
-        channel=user.target_channel,
+        channels=[item.channel for item in channels],
+        interests=[item.interest for item in interests],
     )

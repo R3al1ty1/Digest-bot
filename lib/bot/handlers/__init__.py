@@ -1,5 +1,5 @@
 """Bot handlers."""
 
-from lib.bot.handlers import channel, digest, settings, start
+from lib.bot.handlers import channel, digest, help_cmd, interests, settings, start
 
-__all__ = ["channel", "digest", "settings", "start", "help_cmd"]
+__all__ = ["channel", "digest", "help_cmd", "interests", "settings", "start"]
