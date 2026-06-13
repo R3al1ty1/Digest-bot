@@ -1,94 +1,15 @@
 import asyncio
-import html
 import logging
-import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-import httpx
-
-from lib.core.config import settings
 from lib.core.container import container
 from lib.services.reducer.ai_client import generate_interest_based_digest
 from lib.services.scraper.scraper import fetch_channel_posts
+from lib.services.telegram_sender import send_telegram_message
 from lib.worker.celery_app import app
 
 logger = logging.getLogger(__name__)
-
-
-def _sanitize_telegram_html(text: str) -> str:
-    """
-    Sanitize HTML for Telegram - escape invalid chars but preserve allowed tags.
-    Telegram allows: <b>, <i>, <u>, <s>, <code>, <pre>, <a href="">.
-    """
-    # First, escape all HTML entities
-    text = html.escape(text)
-
-    # Then restore allowed tags
-    # Restore <b> and </b>
-    text = re.sub(r'&lt;b&gt;', '<b>', text)
-    text = re.sub(r'&lt;/b&gt;', '</b>', text)
-
-    # Restore <i> and </i>
-    text = re.sub(r'&lt;i&gt;', '<i>', text)
-    text = re.sub(r'&lt;/i&gt;', '</i>', text)
-
-    # Restore <a href="..."> and </a>
-    text = re.sub(r'&lt;a href=&quot;([^&]+)&quot;&gt;', r'<a href="\1">', text)
-    text = re.sub(r'&lt;/a&gt;', '</a>', text)
-
-    return text
-
-
-async def _send_telegram_message(chat_id: int, text: str) -> bool:
-    """Send message via Telegram Bot API."""
-    url = f"https://api.telegram.org/bot{settings.bot_token}/sendMessage"
-
-    # Telegram message limit is 4096 characters
-    MAX_LENGTH = 4096
-
-    # Truncate if too long
-    if len(text) > MAX_LENGTH:
-        text = text[:MAX_LENGTH - 50] + "\n\n... (сообщение обрезано)"
-        logger.warning(f"Message truncated to {MAX_LENGTH} chars for chat {chat_id}")
-
-    async with httpx.AsyncClient() as client:
-        # Try with HTML first (sanitize to fix invalid entities)
-        sanitized_text = _sanitize_telegram_html(text)
-
-        # Check if text is empty after sanitization
-        if not sanitized_text.strip():
-            logger.error("Message is empty after sanitization, original text was: %s", text[:500])
-            sanitized_text = text  # Use original text as fallback
-
-        payload = {
-            "chat_id": chat_id,
-            "text": sanitized_text,
-            "parse_mode": "HTML",
-            "disable_web_page_preview": True,
-        }
-        response = await client.post(url, json=payload, timeout=30)
-
-        if response.status_code == 200:
-            return True
-
-        # Log the error
-        logger.error(f"Telegram API error (HTML): {response.status_code} - {response.text}")
-
-        # Fallback: try without HTML parsing (plain text)
-        payload_plain = {
-            "chat_id": chat_id,
-            "text": text,
-            "disable_web_page_preview": True,
-        }
-        response = await client.post(url, json=payload_plain, timeout=30)
-
-        if response.status_code == 200:
-            logger.info("Message sent successfully with plain text fallback")
-            return True
-
-        logger.error(f"Telegram API error (plain): {response.status_code} - {response.text}")
-        return False
 
 
 async def _generate_digest_for_user(
@@ -118,14 +39,14 @@ async def _generate_digest_for_user(
                 interests = [item.interest for item in user_interests]
 
             if not channels:
-                await _send_telegram_message(
+                await send_telegram_message(
                     user_id,
                     "Сначала укажи каналы для дайджеста командой /set_channels",
                 )
                 return
 
             if not interests:
-                await _send_telegram_message(
+                await send_telegram_message(
                     user_id,
                     "Сначала укажи интересы для дайджеста командой /set_interests",
                 )
@@ -156,7 +77,7 @@ async def _generate_digest_for_user(
                     status="error",
                     error_message=error_message[:1000],
                 )
-                await _send_telegram_message(
+                await send_telegram_message(
                     user_id,
                     "Не удалось получить данные ни из одного канала. Попробуйте позже.",
                 )
@@ -167,7 +88,7 @@ async def _generate_digest_for_user(
                 interests,
             )
 
-            sent = await _send_telegram_message(user_id, digest_text)
+            sent = await send_telegram_message(user_id, digest_text)
             legacy_channel = channels[0] if len(channels) == 1 else "multiple"
             error_message = None
             if fetch_errors:
@@ -211,7 +132,7 @@ async def _generate_digest_for_user(
                 status="error",
                 error_message=str(e)[:1000],
             )
-            await _send_telegram_message(
+            await send_telegram_message(
                 user_id,
                 "Произошла ошибка при генерации дайджеста.\n\n"
                 "Попробуйте позже или проверьте, что канал доступен.",
