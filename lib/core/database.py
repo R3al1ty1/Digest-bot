@@ -1,6 +1,4 @@
 import logging
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -10,6 +8,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from lib.core.constants import AppEnvironment
+from lib.core.uow import UnitOfWork
 
 
 class DatabaseManager:
@@ -22,8 +21,9 @@ class DatabaseManager:
         self._dsn = dsn
         self._environment = environment
         self._logger = logger
+
         self._engine: AsyncEngine | None = None
-        self._session_factory: async_sessionmaker[AsyncSession] | None = None
+        self._session_factory: async_sessionmaker | None = None
 
     def init(self) -> None:
         if self._engine:
@@ -50,24 +50,17 @@ class DatabaseManager:
             self._session_factory = None
             self._logger.info("Database connection closed.")
 
-    @asynccontextmanager
-    async def session(self) -> AsyncIterator[AsyncSession]:
+    def uow(self) -> UnitOfWork:
         if not self._session_factory:
-            raise RuntimeError("Database not initialized. Call init() first.")
+            raise RuntimeError("Database not initialized")
 
-        async with self._session_factory() as session:
-            try:
-                yield session
-            except Exception as e:
-                self._logger.error(f"DB session error, rolling back: {e}")
-                await session.rollback()
-                raise
-            finally:
-                await session.close()
+        return UnitOfWork(
+            session_factory=self._session_factory,
+        )
 
     @property
     def engine(self) -> AsyncEngine:
         if not self._engine:
-            raise RuntimeError("Database not initialized. Call init() first.")
+            raise RuntimeError("Database not initialized")
 
         return self._engine

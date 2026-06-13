@@ -3,7 +3,6 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message
 
 from lib.core.container import container
-from lib.db.repositories.user import UserRepository
 
 
 router = Router()
@@ -11,15 +10,21 @@ router = Router()
 WELCOME_MESSAGE = """
 <b>Привет! Я бот для создания дайджестов новостей.</b>
 
-Я могу каждый день присылать тебе краткую сводку новостей из любого публичного Telegram-канала.
+Я могу каждый день присылать тебе краткую сводку новостей из публичных Telegram-каналов по твоим интересам.
 
 <b>Как начать:</b>
-1. Укажи канал командой /set_channel
-2. Получи дайджест командой /digest
-3. Настрой автоматическую рассылку в /settings
+1. Укажи каналы командой /set_channels
+2. Укажи интересы командой /set_interests
+3. Получи дайджест командой /digest
+4. Настрой автоматическую рассылку в /settings
 
 <b>Команды:</b>
-/set_channel — указать канал для дайджеста
+/set_channels — указать каналы для дайджеста
+/add_channel — добавить канал
+/remove_channel — удалить канал
+/channels — показать каналы
+/set_interests — указать интересы
+/interests — показать интересы
 /digest — получить дайджест сейчас
 /settings — настройки рассылки
 /help — помощь
@@ -31,9 +36,8 @@ async def cmd_start(message: Message) -> None:
     if not message.from_user:
         return
 
-    async with container.db.session() as session:
-        repo = UserRepository(session)
-        await repo.get_or_create(
+    async with container.uow() as uow:
+        await uow.users.get_or_create(
             telegram_id=message.from_user.id,
             username=message.from_user.username,
         )

@@ -67,9 +67,22 @@ docker-compose logs -f worker
 | Команда | Описание |
 |---------|----------|
 | `/start` | Регистрация и приветствие |
-| `/set_channel <username>` | Установить канал для дайджеста |
+| `/set_channels <username> ...` | Установить до 5 каналов для дайджеста |
+| `/add_channel <username>` | Добавить канал |
+| `/remove_channel <username>` | Удалить канал |
+| `/channels` | Показать текущие каналы |
+| `/set_interests <интересы>` | Установить до 5 интересов через запятую |
+| `/interests` | Показать текущие интересы |
 | `/digest` | Получить дайджест сейчас |
 | `/settings` | Настройки рассылки |
+
+Пример настройки:
+
+```text
+/set_channels @channel_one @channel_two
+/set_interests финансы, технологии, здоровье
+/digest
+```
 
 ## Локальная разработка
 

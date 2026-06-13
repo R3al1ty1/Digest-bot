@@ -7,6 +7,10 @@ class AppEnvironment(str, Enum):
     PRODUCTION = "production"
 
 
+MAX_CHANNELS_PER_USER = 5
+MAX_INTERESTS_PER_USER = 5
+
+
 class ModelInteraction:
     SYSTEM_PROMPT = """
     # ROLE

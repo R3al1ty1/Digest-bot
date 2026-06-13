@@ -6,7 +6,6 @@ from aiogram.types import CallbackQuery, Message
 
 from lib.bot.keyboards import get_settings_keyboard, get_time_keyboard
 from lib.core.container import container
-from lib.db.repositories.user import UserRepository
 
 
 router = Router()
@@ -16,14 +15,20 @@ class SettingsState(StatesGroup):
     waiting_for_time = State()
 
 
-def _format_settings(user) -> str:
-    channel = f"@{user.target_channel}" if user.target_channel else "не указан"
+def _format_settings(user, channels: list[str], interests: list[str]) -> str:
+    channel_text = (
+        ", ".join(f"@{channel}" for channel in channels)
+        if channels
+        else "не указаны"
+    )
+    interest_text = ", ".join(interests) if interests else "не указаны"
     schedule = user.schedule_time.strftime("%H:%M") if user.schedule_time else "09:00"
     status = "включена" if user.is_active else "выключена"
 
     return (
         "<b>Текущие настройки:</b>\n\n"
-        f"<b>Канал:</b> {channel}\n"
+        f"<b>Каналы:</b> {channel_text}\n"
+        f"<b>Интересы:</b> {interest_text}\n"
         f"<b>Время рассылки:</b> {schedule} GMT+3 (Москва)\n"
         f"<b>Автоматическая рассылка:</b> {status}"
     )
@@ -34,16 +39,21 @@ async def cmd_settings(message: Message) -> None:
     if not message.from_user:
         return
 
-    async with container.db.session() as session:
-        repo = UserRepository(session)
-        user = await repo.get_by_id(message.from_user.id)
+    async with container.uow() as uow:
+        user = await uow.users.get_by_id(message.from_user.id)
+        channels = await uow.user_channels.list_active_by_user(message.from_user.id)
+        interests = await uow.digest_interests.list_by_user(message.from_user.id)
 
     if not user:
         await message.answer("Ты ещё не зарегистрирован. Нажми /start для начала.")
         return
 
     await message.answer(
-        _format_settings(user),
+        _format_settings(
+            user,
+            [item.channel for item in channels],
+            [item.interest for item in interests],
+        ),
         reply_markup=get_settings_keyboard(user.is_active),
     )
 
@@ -53,18 +63,23 @@ async def toggle_active(callback: CallbackQuery) -> None:
     if not callback.from_user or not callback.message:
         return
 
-    async with container.db.session() as session:
-        repo = UserRepository(session)
-        user = await repo.get_by_id(callback.from_user.id)
+    async with container.uow() as uow:
+        user = await uow.users.get_by_id(callback.from_user.id)
+        channels = await uow.user_channels.list_active_by_user(callback.from_user.id)
+        interests = await uow.digest_interests.list_by_user(callback.from_user.id)
 
         if user:
             new_status = not user.is_active
-            await repo.set_active(callback.from_user.id, new_status)
-            user = await repo.get_by_id(callback.from_user.id)
+            await uow.users.set_active(callback.from_user.id, new_status)
+            user = await uow.users.get_by_id(callback.from_user.id)
 
     if user:
         await callback.message.edit_text(
-            _format_settings(user),
+            _format_settings(
+                user,
+                [item.channel for item in channels],
+                [item.interest for item in interests],
+            ),
             reply_markup=get_settings_keyboard(user.is_active),
         )
 
@@ -91,14 +106,19 @@ async def set_time(callback: CallbackQuery) -> None:
     time_str = callback.data.split(":")[1]
     hour = int(time_str)
 
-    async with container.db.session() as session:
-        repo = UserRepository(session)
-        await repo.update_schedule(callback.from_user.id, hour, 0)
-        user = await repo.get_by_id(callback.from_user.id)
+    async with container.uow() as uow:
+        await uow.users.update_schedule(callback.from_user.id, hour, 0)
+        user = await uow.users.get_by_id(callback.from_user.id)
+        channels = await uow.user_channels.list_active_by_user(callback.from_user.id)
+        interests = await uow.digest_interests.list_by_user(callback.from_user.id)
 
     if user:
         await callback.message.edit_text(
-            _format_settings(user),
+            _format_settings(
+                user,
+                [item.channel for item in channels],
+                [item.interest for item in interests],
+            ),
             reply_markup=get_settings_keyboard(user.is_active),
         )
 
@@ -110,13 +130,18 @@ async def back_to_settings(callback: CallbackQuery) -> None:
     if not callback.from_user or not callback.message:
         return
 
-    async with container.db.session() as session:
-        repo = UserRepository(session)
-        user = await repo.get_by_id(callback.from_user.id)
+    async with container.uow() as uow:
+        user = await uow.users.get_by_id(callback.from_user.id)
+        channels = await uow.user_channels.list_active_by_user(callback.from_user.id)
+        interests = await uow.digest_interests.list_by_user(callback.from_user.id)
 
     if user:
         await callback.message.edit_text(
-            _format_settings(user),
+            _format_settings(
+                user,
+                [item.channel for item in channels],
+                [item.interest for item in interests],
+            ),
             reply_markup=get_settings_keyboard(user.is_active),
         )
 
