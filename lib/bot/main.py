@@ -7,19 +7,18 @@ from aiogram.enums import ParseMode
 
 from lib.bot.handlers import channel, digest, help_cmd, interests, settings, start
 from lib.core.container import container
-from lib.core.config import settings as app_settings
 
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
-logger = logging.getLogger(__name__)
+logger = container.logger
 
 
 async def main() -> None:
     bot = Bot(
-        token=app_settings.bot_token,
+        token=container.settings.bot_token,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
 

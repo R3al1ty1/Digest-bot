@@ -1,11 +1,9 @@
 import html
-import logging
 import re
+from logging import Logger
 
 import httpx
 
-
-logger = logging.getLogger(__name__)
 
 TELEGRAM_CHUNK_LIMIT = 3500
 
@@ -58,60 +56,74 @@ def split_telegram_message(text: str) -> list[str]:
     return chunks
 
 
-async def send_telegram_message(chat_id: int, text: str) -> bool:
-    chunks = split_telegram_message(text)
-    if len(chunks) > 1:
-        logger.info("Sending %s Telegram message chunks to chat %s", len(chunks), chat_id)
+class TelegramSender:
+    def __init__(self, bot_token: str, logger: Logger) -> None:
+        self._url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        self._logger = logger
 
-    async with httpx.AsyncClient() as client:
-        for chunk in chunks:
-            sent = await _send_telegram_message_chunk(client, chat_id, chunk)
-            if not sent:
-                return False
+    async def send(self, chat_id: int, text: str) -> bool:
+        chunks = split_telegram_message(text)
+        if len(chunks) > 1:
+            self._logger.info(
+                "Sending %s Telegram message chunks to chat %s",
+                len(chunks),
+                chat_id,
+            )
 
-    return True
+        async with httpx.AsyncClient() as client:
+            for chunk in chunks:
+                sent = await self._send_chunk(client, chat_id, chunk)
+                if not sent:
+                    return False
 
+        return True
 
-async def _send_telegram_message_chunk(
-    client: httpx.AsyncClient,
-    chat_id: int,
-    text: str,
-) -> bool:
-    from lib.core.config import settings
+    async def _send_chunk(
+        self,
+        client: httpx.AsyncClient,
+        chat_id: int,
+        text: str,
+    ) -> bool:
+        sanitized_text = sanitize_telegram_html(text)
 
-    url = f"https://api.telegram.org/bot{settings.bot_token}/sendMessage"
-    sanitized_text = sanitize_telegram_html(text)
+        if not sanitized_text.strip():
+            self._logger.error(
+                "Message chunk is empty after sanitization, original text was: %s",
+                text[:500],
+            )
+            sanitized_text = text
 
-    if not sanitized_text.strip():
-        logger.error(
-            "Message chunk is empty after sanitization, original text was: %s",
-            text[:500],
+        payload = {
+            "chat_id": chat_id,
+            "text": sanitized_text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": True,
+        }
+        response = await client.post(self._url, json=payload, timeout=30)
+
+        if response.status_code == 200:
+            return True
+
+        self._logger.error(
+            "Telegram API error (HTML): %s - %s",
+            response.status_code,
+            response.text,
         )
-        sanitized_text = text
 
-    payload = {
-        "chat_id": chat_id,
-        "text": sanitized_text,
-        "parse_mode": "HTML",
-        "disable_web_page_preview": True,
-    }
-    response = await client.post(url, json=payload, timeout=30)
+        payload_plain = {
+            "chat_id": chat_id,
+            "text": text,
+            "disable_web_page_preview": True,
+        }
+        response = await client.post(self._url, json=payload_plain, timeout=30)
 
-    if response.status_code == 200:
-        return True
+        if response.status_code == 200:
+            self._logger.info("Message sent successfully with plain text fallback")
+            return True
 
-    logger.error("Telegram API error (HTML): %s - %s", response.status_code, response.text)
-
-    payload_plain = {
-        "chat_id": chat_id,
-        "text": text,
-        "disable_web_page_preview": True,
-    }
-    response = await client.post(url, json=payload_plain, timeout=30)
-
-    if response.status_code == 200:
-        logger.info("Message sent successfully with plain text fallback")
-        return True
-
-    logger.error("Telegram API error (plain): %s - %s", response.status_code, response.text)
-    return False
+        self._logger.error(
+            "Telegram API error (plain): %s - %s",
+            response.status_code,
+            response.text,
+        )
+        return False

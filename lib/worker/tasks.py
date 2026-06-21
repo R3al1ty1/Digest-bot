@@ -1,15 +1,12 @@
 import asyncio
-import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from lib.core.container import container
-from lib.services.reducer.ai_client import generate_interest_based_digest
 from lib.services.scraper.scraper import fetch_channel_posts
-from lib.services.telegram_sender import send_telegram_message
 from lib.worker.celery_app import app
 
-logger = logging.getLogger(__name__)
+logger = container.logger
 
 
 async def _generate_digest_for_user(
@@ -39,14 +36,14 @@ async def _generate_digest_for_user(
                 interests = [item.interest for item in user_interests]
 
             if not channels:
-                await send_telegram_message(
+                await container.telegram_sender.send(
                     user_id,
                     "Сначала укажи каналы для дайджеста командой /set_channels",
                 )
                 return
 
             if not interests:
-                await send_telegram_message(
+                await container.telegram_sender.send(
                     user_id,
                     "Сначала укажи интересы для дайджеста командой /set_interests",
                 )
@@ -67,7 +64,9 @@ async def _generate_digest_for_user(
             total_posts = sum(len(posts) for posts in posts_by_channel.values())
 
             if not posts_by_channel and fetch_errors:
-                error_message = "Failed to fetch all channels: " + ", ".join(fetch_errors)
+                error_message = "Failed to fetch all channels: " + ", ".join(
+                    fetch_errors
+                )
                 await uow.digest_logs.create(
                     user_id=user_id,
                     channel="multiple" if len(channels) > 1 else channels[0],
@@ -77,18 +76,19 @@ async def _generate_digest_for_user(
                     status="error",
                     error_message=error_message[:1000],
                 )
-                await send_telegram_message(
+                await container.telegram_sender.send(
                     user_id,
                     "Не удалось получить данные ни из одного канала. Попробуйте позже.",
                 )
                 return
 
-            digest_text, tokens_used = await generate_interest_based_digest(
+            ai_client = container.digest_ai_client
+            digest_text, tokens_used = await ai_client.generate_interest_based_digest(
                 posts_by_channel,
                 interests,
             )
 
-            sent = await send_telegram_message(user_id, digest_text)
+            sent = await container.telegram_sender.send(user_id, digest_text)
             legacy_channel = channels[0] if len(channels) == 1 else "multiple"
             error_message = None
             if fetch_errors:
@@ -125,14 +125,16 @@ async def _generate_digest_for_user(
             logger.exception(f"Error generating digest for user {user_id}: {e}")
             await uow.digest_logs.create(
                 user_id=user_id,
-                channel="multiple" if channels and len(channels) > 1 else (channels or ["unknown"])[0],
+                channel="multiple"
+                if channels and len(channels) > 1
+                else (channels or ["unknown"])[0],
                 channels=channels,
                 channels_count=len(channels or []),
                 interests=interests,
                 status="error",
                 error_message=str(e)[:1000],
             )
-            await send_telegram_message(
+            await container.telegram_sender.send(
                 user_id,
                 "Произошла ошибка при генерации дайджеста.\n\n"
                 "Попробуйте позже или проверьте, что канал доступен.",
@@ -169,6 +171,7 @@ def scheduled_digest_task() -> dict:
     Celery task: Generate digests for users scheduled at current hour.
     Called by Celery Beat every hour.
     """
+
     async def _run_for_scheduled_users():
         now = datetime.now(ZoneInfo("Europe/Moscow"))
         current_hour = now.hour
